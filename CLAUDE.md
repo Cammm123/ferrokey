@@ -10,6 +10,12 @@ the result. Only the holder of $A$ can undo it with $A^{-1}$.
   determinant; $\det A \neq 0$ only guarantees $A^{-1}$ exists.
 - Why is plain $Ax$ weak? With $n$ known (message, ciphertext) pairs an attacker
   solves $AX = Y$ for $A$ (known-plaintext attack). This is the classic Hill cipher.
+- Circle -> ellipse (2026-11-01): the ellipse's axes show which directions $A$
+  stretches and by how much (its SVD), so a published shape leaks most of the key.
+  The message must be the vectors, not the shape. $A$ and $A^{-1}$ hold the same
+  secret, so this is shared-key, not public-key.
+- Encrypting $e_1, \dots, e_n$ gives the columns of $A$ directly; linearity also
+  means sums of messages encrypt to sums of ciphertexts.
 - Over the reals, rounding errors break decryption; work mod a prime instead.
 - The modern fix: add small random noise, $b = As + e$. Removing the noise without
   the key is believed hard (Learning With Errors, the basis of post-quantum
