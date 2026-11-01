@@ -21,6 +21,21 @@ the result. Only the holder of $A$ can undo it with $A^{-1}$.
   the key is believed hard (Learning With Errors, the basis of post-quantum
   crypto like Kyber/ML-KEM).
 
+## Product vision (2026-11-01)
+
+Each user molds a personal 3D shape with ferrofluid-like dynamics (spiky, round,
+anything): their avatar and their key, used to send messages.
+
+Design notes so far:
+- Mod-p arithmetic has no geometry, so the shape can't literally be the matrix.
+  It's the interface: the shape is drawn from the key (or molding feeds the key's
+  randomness), not read back from the shape each time.
+- Public-key split fits: secret key stays on the device, public key is shared, and
+  the avatar is a visual fingerprint of the public key (like SSH randomart), safe
+  to show anyone.
+- Hand-molded shapes alone have too little randomness and can't be reproduced
+  exactly; mix with a real random generator.
+
 ## Plan
 
 1. Build a Hill cipher in Python (mod 26 or mod a prime): encrypt, decrypt.
