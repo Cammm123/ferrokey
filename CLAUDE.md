@@ -42,4 +42,14 @@ Design notes so far:
 2. Break it with a known-plaintext attack using linear algebra.
 3. Toy LWE scheme; try the same attack and see why it fails.
 
-Not started. No code yet.
+## Ferrofluid toy (2026-11-01)
+
+`ferrofluid/index.html`: shape editor only, no crypto yet. Run with the
+`ferrofluid` entry in `.claude/launch.json` (http://localhost:8128).
+- A sphere's vertices are pushed out by up to 64 cone-shaped spikes in a vertex
+  shader. Spike layout comes from a seed (Fibonacci sphere + jitter).
+- Each spike height is a damped spring; the magnet (pointer direction) raises the
+  spikes facing it. "Thickness" sets the damping.
+- The whole shape is a few numbers (seed, count, length, sharpness, width, focus,
+  thickness, color) kept in the URL hash, so a shape is shareable as a link.
+- Next: generate a key, then draw the shape from the public key's numbers.

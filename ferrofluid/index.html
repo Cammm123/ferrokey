@@ -1,0 +1,327 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ferrofluid Key</title>
+<style>
+  :root {
+    --bg: #f2f1ee; --panel: rgba(255,255,255,0.82); --text: #1d1d1f;
+    --muted: #6b6b70; --accent: #3b4bff; --line: rgba(0,0,0,0.1);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0d0d10; --panel: rgba(28,28,32,0.82); --text: #ececf0;
+      --muted: #9a9aa3; --accent: #8c96ff; --line: rgba(255,255,255,0.12);
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
+    font: 14px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; overflow: hidden; }
+  canvas { display: block; touch-action: none; }
+  #panel { position: fixed; top: 16px; left: 16px; width: 260px; padding: 14px 16px;
+    background: var(--panel); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--line); border-radius: 14px; }
+  h1 { font-size: 15px; margin: 0 0 2px; }
+  .hint { color: var(--muted); font-size: 12px; margin: 0 0 10px; }
+  label { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); margin-top: 8px; }
+  label span:last-child { color: var(--text); font-variant-numeric: tabular-nums; }
+  input[type=range] { width: 100%; accent-color: var(--accent); }
+  input[type=color] { width: 100%; height: 26px; border: 1px solid var(--line); border-radius: 6px; background: none; padding: 0; }
+  .row { display: flex; gap: 6px; margin-top: 12px; }
+  button { flex: 1; padding: 7px 0; border-radius: 8px; border: 1px solid var(--line);
+    background: transparent; color: var(--text); font: inherit; font-size: 12px; cursor: pointer; }
+  button.on { background: var(--accent); color: #fff; border-color: transparent; }
+  #code { margin-top: 10px; font: 11px ui-monospace, Menlo, monospace; color: var(--muted); word-break: break-all; }
+  #toggle { display: none; }
+  @media (max-width: 600px) {
+    #panel { top: auto; bottom: 12px; left: 12px; right: 12px; width: auto; max-height: 46vh; overflow-y: auto; }
+    #panel.collapsed .body { display: none; }
+    #toggle { display: block; position: absolute; top: 10px; right: 12px; flex: none; width: auto; padding: 4px 10px; }
+  }
+</style>
+</head>
+<body>
+<div id="panel">
+  <button id="toggle">Hide</button>
+  <h1>Ferrofluid key</h1>
+  <p class="hint">Drag to spin. Turn the magnet on and move your pointer to pull the spikes.</p>
+  <div class="body">
+    <label><span>Spikes</span><span id="v-count"></span></label>
+    <input id="count" type="range" min="1" max="64" step="1">
+    <label><span>Spike length</span><span id="v-length"></span></label>
+    <input id="length" type="range" min="0" max="1" step="0.01">
+    <label><span>Sharpness</span><span id="v-sharp"></span></label>
+    <input id="sharp" type="range" min="0" max="1" step="0.01">
+    <label><span>Spike width</span><span id="v-width"></span></label>
+    <input id="width" type="range" min="0" max="1" step="0.01">
+    <label><span>Magnet focus</span><span id="v-focus"></span></label>
+    <input id="focus" type="range" min="0" max="1" step="0.01">
+    <label><span>Thickness (damping)</span><span id="v-visc"></span></label>
+    <input id="visc" type="range" min="0" max="1" step="0.01">
+    <label><span>Color</span><span></span></label>
+    <input id="color" type="color">
+    <div class="row">
+      <button id="magnet">Magnet: off</button>
+      <button id="random">Randomize</button>
+    </div>
+    <div id="code"></div>
+  </div>
+</div>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+<script type="module">
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
+
+const MAX_SPIKES = 64;
+
+// Shape parameters: everything that defines a user's shape. Saved in the URL hash.
+const defaults = { seed: 1, count: 24, length: 0.55, sharp: 0.6, width: 0.45, focus: 0.5, visc: 0.4, color: "#15151c" };
+const shape = { ...defaults, ...readHash() };
+
+function readHash() {
+  try {
+    const p = new URLSearchParams(location.hash.slice(1));
+    const out = {};
+    for (const k of Object.keys(defaults)) {
+      if (!p.has(k)) continue;
+      out[k] = k === "color" ? "#" + p.get(k).replace("#", "") : Number(p.get(k));
+    }
+    return out;
+  } catch { return {}; }
+}
+
+function writeHash() {
+  const p = new URLSearchParams();
+  for (const k of Object.keys(defaults)) p.set(k, k === "color" ? shape[k].slice(1) : shape[k]);
+  history.replaceState(null, "", "#" + p.toString());
+  document.getElementById("code").textContent = "shape: " + p.toString();
+}
+
+// Small seeded random generator, so a seed always gives the same spike layout.
+function mulberry32(a) {
+  return () => {
+    a |= 0; a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+// Spike directions: evenly spread points on a sphere (Fibonacci), jittered by the seed.
+function spikeDirections(n, seed) {
+  const rand = mulberry32(seed * 9973);
+  const dirs = [];
+  const golden = Math.PI * (3 - Math.sqrt(5));
+  for (let i = 0; i < n; i++) {
+    const y = n === 1 ? 1 : 1 - (2 * (i + 0.5)) / n;
+    const r = Math.sqrt(1 - y * y);
+    const th = golden * i;
+    const v = new THREE.Vector3(Math.cos(th) * r, y, Math.sin(th) * r);
+    v.x += (rand() - 0.5) * 0.35; v.y += (rand() - 0.5) * 0.35; v.z += (rand() - 0.5) * 0.35;
+    dirs.push(v.normalize());
+  }
+  return dirs;
+}
+
+// --- Scene ---
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(renderer), 0.04).texture;
+
+const camera = new THREE.PerspectiveCamera(40, innerWidth / innerHeight, 0.1, 100);
+camera.position.set(0, 0, 6.5);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.enablePan = false;
+controls.minDistance = 3.5;
+controls.maxDistance = 20;
+
+const uniforms = {
+  uSpikes: { value: Array.from({ length: MAX_SPIKES }, () => new THREE.Vector4()) },
+  uCount: { value: 0 },
+  uSharp: { value: 2 },
+  uCosR: { value: 0.8 },
+  uTime: { value: 0 },
+  uWobble: { value: 0 },
+};
+
+const material = new THREE.MeshPhysicalMaterial({
+  color: shape.color, metalness: 0.85, roughness: 0.12, clearcoat: 1, clearcoatRoughness: 0.05,
+});
+
+// Move each vertex of a sphere outward by disp(direction), and rebuild its normal
+// from two nearby samples so the lighting follows the spikes.
+material.onBeforeCompile = (sh) => {
+  Object.assign(sh.uniforms, uniforms);
+  sh.vertexShader = sh.vertexShader
+    .replace("#include <common>", `#include <common>
+      uniform vec4 uSpikes[${MAX_SPIKES}];
+      uniform int uCount;
+      uniform float uSharp, uCosR, uTime, uWobble;
+      float disp(vec3 d) {
+        float r = 1.0 + uWobble * 0.03 * sin(5.0 * d.x + uTime * 1.3) * sin(4.0 * d.y + uTime * 1.1) * sin(6.0 * d.z + uTime * 0.9);
+        for (int i = 0; i < ${MAX_SPIKES}; i++) {
+          if (i >= uCount) break;
+          float t = max(0.0, (dot(d, uSpikes[i].xyz) - uCosR) / (1.0 - uCosR));
+          r += uSpikes[i].w * pow(t, uSharp);
+        }
+        return r;
+      }`)
+    .replace("#include <beginnormal_vertex>", `
+      vec3 sd = normalize(position);
+      vec3 st1 = normalize(cross(sd, abs(sd.y) < 0.99 ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0)));
+      vec3 st2 = cross(sd, st1);
+      vec3 sp0 = sd * disp(sd);
+      vec3 sa = normalize(sd + st1 * 0.003); vec3 sp1 = sa * disp(sa);
+      vec3 sb = normalize(sd + st2 * 0.003); vec3 sp2 = sb * disp(sb);
+      vec3 objectNormal = normalize(cross(sp1 - sp0, sp2 - sp0));`)
+    .replace("#include <begin_vertex>", "vec3 transformed = sp0;");
+};
+
+const blob = new THREE.Mesh(new THREE.IcosahedronGeometry(1, 96), material);
+scene.add(blob);
+
+// --- Spike dynamics: each spike is a damped spring chasing its target height ---
+let dirs = [], heights = [], velocities = [];
+function rebuildSpikes() {
+  const old = heights;
+  dirs = spikeDirections(shape.count, shape.seed);
+  heights = dirs.map((_, i) => old[i] ?? 0);
+  velocities = dirs.map(() => 0);
+}
+rebuildSpikes();
+
+let magnetOn = false;
+const magnetDir = new THREE.Vector3(0, 1, 0);
+const pointer = new THREE.Vector2(0, 0.5);
+
+function updatePointer(e) {
+  pointer.set((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
+}
+renderer.domElement.addEventListener("pointermove", updatePointer);
+renderer.domElement.addEventListener("pointerdown", updatePointer);
+
+function targetHeight(dir) {
+  const base = shape.length * 0.9;
+  if (!magnetOn) return base * 0.15;
+  const facing = Math.max(0, dir.dot(magnetDir));
+  const focusPow = 0.5 + shape.focus * 8;
+  return base * (0.2 + 0.8 * Math.pow(facing, focusPow)) * 1.6;
+}
+
+// --- UI ---
+const ids = ["count", "length", "sharp", "width", "focus", "visc"];
+function syncUI() {
+  for (const id of ids) {
+    document.getElementById(id).value = shape[id];
+    document.getElementById("v-" + id).textContent = id === "count" ? shape[id] : Number(shape[id]).toFixed(2);
+  }
+  document.getElementById("color").value = shape.color;
+  material.color.set(shape.color);
+  uniforms.uSharp.value = 0.6 + shape.sharp * 3.4;
+  uniforms.uCosR.value = Math.cos(0.12 + shape.width * 0.5);
+  writeHash();
+}
+for (const id of ids) {
+  document.getElementById(id).addEventListener("input", (e) => {
+    shape[id] = Number(e.target.value);
+    if (id === "count") rebuildSpikes();
+    syncUI();
+  });
+}
+document.getElementById("color").addEventListener("input", (e) => { shape.color = e.target.value; syncUI(); });
+
+const magnetBtn = document.getElementById("magnet");
+magnetBtn.addEventListener("click", () => {
+  magnetOn = !magnetOn;
+  magnetBtn.textContent = "Magnet: " + (magnetOn ? "on" : "off");
+  magnetBtn.classList.toggle("on", magnetOn);
+});
+
+document.getElementById("random").addEventListener("click", () => {
+  const r = Math.random;
+  Object.assign(shape, {
+    seed: Math.floor(r() * 1e6), count: 1 + Math.floor(r() * 63),
+    length: +r().toFixed(2), sharp: +r().toFixed(2), width: +r().toFixed(2),
+    focus: +r().toFixed(2), visc: +r().toFixed(2),
+    color: "#" + new THREE.Color().setHSL(r(), 0.5 + r() * 0.4, 0.08 + r() * 0.3).getHexString(),
+  });
+  rebuildSpikes();
+  syncUI();
+});
+
+const panel = document.getElementById("panel");
+document.getElementById("toggle").addEventListener("click", (e) => {
+  panel.classList.toggle("collapsed");
+  e.target.textContent = panel.classList.contains("collapsed") ? "Show" : "Hide";
+});
+
+// On a tall phone screen: back the camera off so the blob fits the width,
+// and shift the view so the blob sits above the panel.
+function fitView() {
+  const aspect = innerWidth / innerHeight;
+  camera.aspect = aspect;
+  camera.position.setLength(Math.max(6.5, 5.5 / aspect));
+  if (innerWidth <= 600) camera.setViewOffset(innerWidth, innerHeight, 0, innerHeight * 0.2, innerWidth, innerHeight);
+  else camera.clearViewOffset();
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+}
+addEventListener("resize", fitView);
+fitView();
+
+syncUI();
+
+// --- Loop ---
+const clock = new THREE.Clock();
+const ray = new THREE.Raycaster();
+const tmp = new THREE.Vector3();
+function step(dt) {
+  uniforms.uTime.value += dt;
+
+  // Magnet sits where the pointer ray passes closest to the blob, in the blob's own frame.
+  ray.setFromCamera(pointer, camera);
+  ray.ray.closestPointToPoint(new THREE.Vector3(), tmp);
+  if (tmp.lengthSq() < 1e-6) tmp.copy(ray.ray.direction).negate();
+  blob.worldToLocal(tmp);
+  magnetDir.lerp(tmp.normalize(), 0.15).normalize();
+
+  // Thick fluid = heavy damping, slow and smooth. Thin fluid = springy and wobbly.
+  const stiffness = 60;
+  const damping = 2 + shape.visc * 22;
+  let motion = 0;
+  for (let i = 0; i < dirs.length; i++) {
+    const a = stiffness * (targetHeight(dirs[i]) - heights[i]) - damping * velocities[i];
+    velocities[i] += a * dt;
+    heights[i] += velocities[i] * dt;
+    motion += Math.abs(velocities[i]);
+    uniforms.uSpikes.value[i].set(dirs[i].x, dirs[i].y, dirs[i].z, Math.max(0, heights[i]));
+  }
+  uniforms.uCount.value = dirs.length;
+  uniforms.uWobble.value = 0.4 + Math.min(motion / Math.max(dirs.length, 1), 2);
+}
+
+function frame() {
+  step(Math.min(clock.getDelta(), 1 / 30));
+  controls.update();
+  renderer.render(scene, camera);
+  requestAnimationFrame(frame);
+}
+frame();
+</script>
+</body>
+</html>
