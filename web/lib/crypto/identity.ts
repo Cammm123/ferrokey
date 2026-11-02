@@ -79,7 +79,7 @@ export function fingerprintId(pub: PublicKeys): string {
   return toB32(fingerprint(pub).subarray(0, 16)).slice(0, 26);
 }
 
-/** The id split into readable groups, e.g. "k3x9a-..." for comparing out loud. */
+/** The 26-character id as five readable groups (5-5-5-5-6) for comparing out loud. */
 export function formatFingerprint(id: string): string {
-  return id.match(/.{1,5}/g)!.join("-");
+  return [id.slice(0, 5), id.slice(5, 10), id.slice(10, 15), id.slice(15, 20), id.slice(20)].join("-");
 }

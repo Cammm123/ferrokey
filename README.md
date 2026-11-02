@@ -8,7 +8,7 @@ you're writing to. Messages are locked in the browser with standard cryptography
 (HPKE with the X-Wing hybrid KEM, ML-KEM-768 + X25519; ML-DSA-65 + Ed25519 signatures)
 and stored on the server only as scrambled "drops" behind short links.
 
-- `web/`: the Next.js app (see `web/README` section in `CLAUDE.md` for running it).
+- `web/`: the Next.js app. Run: `cd web && npm install && npm test && npm run dev`.
 - `prototype/ferrofluid/`: the original single-file shape toy.
 - `idea.md`: how the idea started (matrix encryption, Hill cipher, LWE).
 - `SECURITY.md`: threat model and known limits.

@@ -38,7 +38,7 @@ describe("identity", () => {
     expect(decodePublic(encodePublic(a.pub))).toEqual(a.pub);
     const id = fingerprintId(a.pub);
     expect(id).toMatch(/^[a-km-np-z2-9]{26}$/);
-    expect(formatFingerprint(id).split("-")).toHaveLength(6);
+    expect(formatFingerprint(id).split("-").map((g) => g.length)).toEqual([5, 5, 5, 5, 6]);
   });
   it("rejects malformed public keys", async () => {
     const a = await identityFromSeed(newSeed());
