@@ -1,4 +1,4 @@
-# matrix-cipher
+# ferrokey: idea and design notes
 
 Idea (2026-10-28, from 21-241): encrypt a message with a linear transformation.
 Write the message as vectors, multiply by a secret invertible matrix $A$, publish
@@ -44,7 +44,7 @@ Design notes so far:
 
 ## Ferrofluid toy (2026-11-01)
 
-`ferrofluid/index.html`: shape editor only, no crypto yet. Run with the
+`prototype/ferrofluid/index.html`: shape editor only, no crypto yet. Run with the
 `ferrofluid` entry in `.claude/launch.json` (http://localhost:8128).
 - A sphere's vertices are pushed out by up to 64 cone-shaped spikes in a vertex
   shader. Spike layout comes from a seed (Fibonacci sphere + jitter).
