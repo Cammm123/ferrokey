@@ -18,7 +18,12 @@ const fail = (status: number, error: string): Result => ({ status, body: { error
 
 /** Client IP as a salted hash: the raw address is never stored. */
 export function ipKey(ip: string): string {
-  const salt = process.env.RATE_SALT ?? "ferrokey-dev-salt";
+  const salt = process.env.RATE_SALT;
+  if (!salt && process.env.NODE_ENV === "production") throw new Error("RATE_SALT must be set in production");
+  return ipHash(salt ?? "ferrokey-dev-salt", ip);
+}
+
+function ipHash(salt: string, ip: string): string {
   return toB64url(sha256(concat(utf8(salt), utf8("|"), utf8(ip)))).slice(0, 32);
 }
 

@@ -4,7 +4,8 @@ import type { DropRow, Store } from "./types";
 
 /** Throw on a Supabase error so API routes fail loudly. */
 function check<T>(res: { data: T; error: { message: string } | null }): T {
-  if (res.error) throw new Error(`Supabase: ${res.error.message}`);
+  // Trimmed: a misconfigured URL can return a whole HTML page as the "message".
+  if (res.error) throw new Error(`Supabase: ${res.error.message.slice(0, 300)}`);
   return res.data;
 }
 

@@ -17,6 +17,10 @@ export function getStore(): Store {
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (url && key) {
+    // Catch the easy mix-up of pasting the site's own address instead of the Supabase project URL.
+    if (!/^https:\/\/[a-z0-9-]+\.supabase\.(co|in)\/?$/.test(url) && process.env.NODE_ENV === "production") {
+      throw new Error("SUPABASE_URL must be the project URL, like https://<ref>.supabase.co");
+    }
     g.ferrokeyStore = new SupabaseStore(url, key);
   } else if (process.env.NODE_ENV === "production") {
     throw new Error("SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set in production");
