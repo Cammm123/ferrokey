@@ -1,5 +1,17 @@
 # ferrokey security notes
 
+## Reporting a vulnerability
+
+Please report security problems **privately**, not in a public issue: on GitHub, open the
+repo's **Security** tab → **Report a vulnerability**. Include what you found, how to
+reproduce it, and what an attacker could do with it. You'll get a reply within a week, and
+credit in the fix if you want it.
+
+In scope: the code in this repo and the live site at https://ferrokey.vercel.app (the
+crypto, the drop/profile API, the security headers). Please don't run load tests against
+the live site, read other people's drops, or try to break into its hosting accounts.
+Known limits listed below aren't new findings, but ideas for fixing them are welcome.
+
 ## What protects a message
 
 - **Locking:** HPKE (RFC 9180) base mode with the X-Wing hybrid KEM (ML-KEM-768 + X25519),
