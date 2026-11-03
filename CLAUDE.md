@@ -43,16 +43,20 @@ In starbase, `.claude/launch.json` has `ferrokey` (dev, port 3002) and `ferrokey
   as drops with expiry and burn-after-reading, verified sender + reply, backup/restore,
   style editing. 32 unit tests (crypto attacks, API, keystore, backup, avatar).
   End-to-end checked in the browser with two identities.
-- **Not deployed.** Needs Cameron's one-time setup (below).
+- **Live at https://ferrokey.vercel.app** (2026-11-02). Vercel project `ferrokey` (root `web`),
+  Supabase project `ferrokey`. Checked live: forge, profile, burn-after-reading message, verified
+  reply in both directions (person B scripted against the live API).
 - Next ideas: inbox of received messages on the device, contact list ("saved ids"),
   attachments, a drop API rate limit that doesn't rely on IPs alone.
 
-## Connect Supabase and Vercel (Cameron, one time)
+## Connect Supabase and Vercel (done 2026-11-02; for a rebuild)
 
 1. supabase.com → New project `ferrokey` (US East). Save the DB password in a password manager.
 2. Database → Extensions: enable `pg_cron`. Then SQL Editor → paste and run `web/supabase/schema.sql`.
-3. Project Settings → API: copy the project URL and the `service_role` key (secret).
+3. Project Settings → Data API: the project URL (`https://<ref>.supabase.co`, not the Vercel address).
+   Project Settings → API Keys: the **Secret** key (`sb_secret_…`) or legacy `service_role`.
 4. vercel.com → Add New → Project → import `Cammm123/ferrokey`, root directory `web`.
 5. Environment variables: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and `RATE_SALT`
-   (any long random string). Deploy.
-6. Tell Claude the URL; it will run the two-identity check against the live site.
+   (`openssl rand -base64 32`), ticked for Production. Env changes need a Redeploy. The server
+   refuses to start if `SUPABASE_URL` isn't a Supabase URL or `RATE_SALT` is missing.
+6. If the API says a table is missing, the schema ran in the wrong project: rerun it in `ferrokey`.
