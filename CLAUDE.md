@@ -2,7 +2,7 @@
 
 Post-quantum encrypted messages where each person's key has a shape: a ferrofluid
 avatar whose spike layout comes from their key and whose look they choose. Cameron's
-product, treated as a real one. Private repo `Cammm123/ferrokey`; in Cameron's
+product, treated as a real one. Public repo `Cammm123/ferrokey` (AGPL-3.0-or-later; anything committed is public); in Cameron's
 starbase workspace it lives at `projects/ferrokey/` (graduated from
 `playground/matrix-cipher/` on 2026-11-02). `idea.md` has how it started.
 
