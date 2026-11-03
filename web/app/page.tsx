@@ -7,7 +7,7 @@ import { Btn, Header, L, Panel, StyleEditor } from "@/components/ui";
 import { shapeOf } from "@/lib/avatar/params";
 import { makeBackup, openBackup, passphraseProblem } from "@/lib/crypto/backup";
 import { fingerprint, formatFingerprint, identityFromSeed, newSeed } from "@/lib/crypto/identity";
-import { absolute, downloadText, loadMe, meFromSeed, publishProfile, shareOrCopy, type Me } from "@/lib/client";
+import { absolute, downloadText, fetchProfile, loadMe, meFromSeed, publishProfile, shareOrCopy, type Me } from "@/lib/client";
 import { forgetIdentity, saveIdentity, saveStyle } from "@/lib/keystore";
 import { DEFAULT_STYLE, type Style } from "@/lib/style";
 
@@ -21,7 +21,11 @@ export default function Home() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    loadMe().then((m) => { setMe(m); setMode(m ? "mine" : "forge"); }).catch(() => setError("This browser can't store keys (private mode?)."));
+    loadMe().then((m) => {
+      setMe(m); setMode(m ? "mine" : "forge");
+      // Heal a profile that never reached the server (e.g. the network dropped mid-forge).
+      if (m) fetchProfile(m.id).catch(() => publishProfile(m)).catch(() => undefined);
+    }).catch(() => setError("This browser can't store keys (private mode?)."));
   }, []);
 
   const done = useCallback((m: Me) => { setMe(m); setMode("mine"); }, []);
@@ -57,8 +61,8 @@ function Forge({ onDone, onRestore }: { onDone: (m: Me) => void; onRestore: () =
     setBusy(true); setError("");
     try {
       const m = await meFromSeed(seed, style);
+      await publishProfile(m); // publish first: a failed forge leaves nothing half-made
       await saveIdentity(seed, style);
-      await publishProfile(m);
       onDone(m);
     } catch (e) {
       setError((e as Error).message);
